@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/IBM/sarama v1.42.1
+	github.com/emicklei/go-restful/v3 v3.11.2
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0

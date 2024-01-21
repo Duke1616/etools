@@ -23,6 +23,7 @@ func WrapBody[Req any](
 		if err != nil {
 			L.Error("执行业务逻辑失败", logger.Error(err))
 		}
+
 		ctx.JSON(http.StatusOK, res)
 	}
 }
