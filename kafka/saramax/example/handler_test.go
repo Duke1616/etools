@@ -2,8 +2,8 @@ package example
 
 import (
 	"encoding/json"
-	"github.com/Duke1616/etools/kafka/sarama/event"
-	"github.com/Duke1616/etools/kafka/sarama/saramax"
+	"github.com/Duke1616/etools/kafka/saramax"
+	"github.com/Duke1616/etools/kafka/saramax/event"
 	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -36,7 +36,7 @@ func TestAsyncProducers(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 序列号Event
-	evt := saramax.EventIncr{Name: "你好我是tools"}
+	evt := saramax.EventIncr{Name: "你好我是tools1"}
 	val, err := json.Marshal(evt)
 	assert.NoError(t, err)
 

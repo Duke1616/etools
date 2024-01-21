@@ -1,6 +1,8 @@
 package event
 
-import "github.com/Duke1616/etools/kafka/sarama/saramax"
+import (
+	"github.com/Duke1616/etools/kafka/saramax"
+)
 
 type Consumer interface {
 	Start() error
