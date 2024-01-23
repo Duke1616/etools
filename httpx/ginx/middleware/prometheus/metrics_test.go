@@ -37,10 +37,6 @@ func TestMetrics(t *testing.T) {
 func initPrometheus() {
 	go func() {
 		// 专门给 prometheus 用的端口
-		//http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
-		//	metrics.WritePrometheus(w, true)
-		//})
-
 		http.Handle("/metrics", promhttp.Handler())
 		http.ListenAndServe(":8081", nil)
 	}()
