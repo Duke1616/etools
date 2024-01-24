@@ -17,11 +17,11 @@ type gormRegister interface {
 	Register(name string, fn func(*gorm.DB)) error
 }
 
-func NewPlugin(opts prometheus.SummaryOpts) *MetricsPlugin {
+func NewPlugin(opts prometheus.SummaryOpts, register *prometheus.Registry) *MetricsPlugin {
 	vector := prometheus.NewSummaryVec(opts,
 		[]string{"type", "table"})
 
-	prometheus.MustRegister(vector)
+	register.MustRegister(vector)
 	return &MetricsPlugin{
 		vector: vector,
 	}
