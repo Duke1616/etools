@@ -2,34 +2,25 @@ package prometheus
 
 import (
 	"context"
+	_ "embed"
+	redismock "github.com/Duke1616/etools/redisx/mocks"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 )
 
-func TestPrometheusPlugin(t *testing.T) {
+func TestPrometheusHook(t *testing.T) {
 	testCases := []struct {
 		name string
-		do   func(ctx context.Context, db *gorm.DB)
 
 		wantCode string
 	}{
 		{
-			name: "验证成功",
-			do: func(ctx context.Context, db *gorm.DB) {
-				err := db.Exec("CREATE TABLE foo (id int)").Error
-				require.NoError(t, err)
-				var num int
-				param := 1
-				err = db.WithContext(ctx).Table("foo").Select("id", param).Where("id = ?", param).Scan(&num).Error
-				require.NoError(t, err)
-			},
+			name:     "验证成功",
 			wantCode: "200 OK",
 		},
 	}
@@ -40,17 +31,13 @@ func TestPrometheusPlugin(t *testing.T) {
 			client := http.DefaultClient
 			client.Timeout = 1 * time.Second
 
-			// sqlite数据
-			db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-			require.NoError(t, err)
-
 			// 注册prometheus
 			reg := prometheus.NewRegistry()
-			plugin := NewPlugin(prometheus.SummaryOpts{
+			hook := NewMetricsHook(prometheus.SummaryOpts{
 				Namespace: "mgr",
 				Subsystem: "etools",
-				Name:      "gorm_db",
-				Help:      "统计 GORM 的数据库查询",
+				Name:      "redis_db",
+				Help:      "统计 REDIS 的数据库查询",
 				ConstLabels: map[string]string{
 					"instance_id": "my_instance",
 				},
@@ -63,12 +50,13 @@ func TestPrometheusPlugin(t *testing.T) {
 				},
 			}, reg)
 
-			// 添加插件
-			err = db.Use(plugin)
-			require.NoError(t, err)
+			// 添加hook
+			db, mock := redismock.NewClientMock()
+			db.AddHook(hook)
 
-			// 运行SQL、执行plugin插件操作
-			tc.do(context.Background(), db)
+			// 发送信息
+			mock.MatchExpectationsInOrder(true)
+			_ = db.Eval(context.TODO(), "key", []string{"field"}, time.Now().Unix())
 
 			// 发送http请求
 			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,9 +71,8 @@ func TestPrometheusPlugin(t *testing.T) {
 
 			defer resp.Body.Close()
 
-			assert.Equal(t, tc.wantCode, resp.Status)
-
 			// 判断信息
+			assert.Equal(t, tc.wantCode, resp.Status)
 			gather, err := reg.Gather()
 			require.NoError(t, err)
 
