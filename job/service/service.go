@@ -10,6 +10,7 @@ import (
 
 type Service interface {
 	Preempt(ctx context.Context) (job.CronJob, error)
+	ResetNextTime(ctx context.Context, j job.CronJob) error
 }
 
 type service struct {
@@ -21,7 +22,8 @@ type service struct {
 func NewService(storage storage.Storager) Service {
 	return &service{
 		storage:         storage,
-		refreshInterval: time.Minute}
+		refreshInterval: time.Minute,
+	}
 }
 
 func (s *service) Preempt(ctx context.Context) (job.CronJob, error) {
@@ -37,6 +39,7 @@ func (s *service) Preempt(ctx context.Context) (job.CronJob, error) {
 			s.refresh(j.Id)
 		}
 	}()
+
 	j.CancelFunc = func() {
 		ticker.Stop()
 		iCtx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -47,6 +50,11 @@ func (s *service) Preempt(ctx context.Context) (job.CronJob, error) {
 		}
 	}
 	return j, err
+}
+
+func (s *service) ResetNextTime(ctx context.Context, j job.CronJob) error {
+	nextTime := j.NextTime()
+	return s.storage.UpdateNextTime(ctx, j.Id, nextTime)
 }
 
 func (s *service) refresh(id int64) {

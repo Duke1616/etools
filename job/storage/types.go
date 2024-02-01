@@ -4,12 +4,14 @@ import (
 	"context"
 	"github.com/Duke1616/etools/job"
 	"github.com/Duke1616/etools/job/storage/mysql"
+	"time"
 )
 
 type Storager interface {
 	Preempt(ctx context.Context) (job.CronJob, error)
 	Release(ctx context.Context, id int64) error
 	UpdateUtime(ctx context.Context, id int64) error
+	UpdateNextTime(ctx context.Context, id int64, time time.Time) error
 }
 
 type storage struct {
@@ -39,4 +41,8 @@ func (s *storage) Release(ctx context.Context, jid int64) error {
 
 func (s *storage) UpdateUtime(ctx context.Context, id int64) error {
 	return s.db.UpdateUtime(ctx, id)
+}
+
+func (s *storage) UpdateNextTime(ctx context.Context, id int64, time time.Time) error {
+	return s.db.UpdateNextTime(ctx, id, time)
 }

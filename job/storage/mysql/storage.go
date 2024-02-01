@@ -10,6 +10,7 @@ type GormStoragerCronJob interface {
 	Preempt(ctx context.Context) (CronJob, error)
 	Release(ctx context.Context, jid int64) error
 	UpdateUtime(ctx context.Context, jid int64) error
+	UpdateNextTime(ctx context.Context, id int64, t time.Time) error
 }
 
 type gormJob struct {
@@ -70,6 +71,15 @@ func (g *gormJob) UpdateUtime(ctx context.Context, jid int64) error {
 	return g.db.WithContext(ctx).Model(&CronJob{}).
 		Where("id = ?", jid).Updates(map[string]any{
 		"utime": now,
+	}).Error
+}
+
+func (g *gormJob) UpdateNextTime(ctx context.Context, jid int64, t time.Time) error {
+	now := time.Now().UnixMilli()
+	return g.db.WithContext(ctx).Model(&CronJob{}).
+		Where("id = ?", jid).Updates(map[string]any{
+		"utime":     now,
+		"next_time": t.UnixMilli(),
 	}).Error
 }
 
