@@ -25,6 +25,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		cancel()
 
 		if err != nil {
+			time.Sleep(time.Second * 1)
 			continue
 		}
 
