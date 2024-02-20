@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/IBM/sarama v1.42.1
 	github.com/VictoriaMetrics/metrics v1.31.0
+	github.com/ecodeclub/ekit v0.0.8
 	github.com/emicklei/go-restful/v3 v3.11.2
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/wire v0.5.0
