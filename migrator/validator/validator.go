@@ -16,9 +16,11 @@ type Validator[T migrator.Entity] struct {
 	target    *gorm.DB
 	direction string
 	batchSize int
+	utime     int64
 
-	l        logger.Logger
-	producer events.Producer
+	sleepInterval time.Duration
+	l             logger.Logger
+	producer      events.Producer
 
 	fromBase func(ctx context.Context, offset int) (T, error)
 }
@@ -48,6 +50,26 @@ func (v *Validator[T]) Validate(ctx context.Context) error {
 	return eg.Wait()
 }
 
+func (v *Validator[T]) Full() *Validator[T] {
+	v.fromBase = v.fullFromBase
+	return v
+}
+
+func (v *Validator[T]) Incr() *Validator[T] {
+	v.fromBase = v.incrFromBase
+	return v
+}
+
+func (v *Validator[T]) Utime(t int64) *Validator[T] {
+	v.utime = t
+	return v
+}
+
+func (v *Validator[T]) SleepInterval(interval time.Duration) *Validator[T] {
+	v.sleepInterval = interval
+	return v
+}
+
 func (v *Validator[T]) validateBaseToTarget(ctx context.Context) error {
 	offset := 0
 	for {
@@ -57,7 +79,11 @@ func (v *Validator[T]) validateBaseToTarget(ctx context.Context) error {
 		}
 
 		if err == gorm.ErrRecordNotFound {
-			// TODO 增量模式 、没有数据了
+			// 证明没有数据量，可以选择开启增量校验
+			if v.sleepInterval <= 0 {
+				return nil
+			}
+			time.Sleep(v.sleepInterval)
 			continue
 		}
 
@@ -113,6 +139,10 @@ func (v *Validator[T]) validateTargetToBase(ctx context.Context) error {
 		}
 
 		if err == gorm.ErrRecordNotFound || len(ts) == 0 {
+			if v.sleepInterval <= 0 {
+				return nil
+			}
+			time.Sleep(v.sleepInterval)
 			continue
 		}
 
@@ -146,7 +176,10 @@ func (v *Validator[T]) validateTargetToBase(ctx context.Context) error {
 
 		v.notifyBaseMissing(diff)
 		if len(ts) < v.batchSize {
-			// 说明比对完成了
+			if v.sleepInterval <= 0 {
+				return nil
+			}
+			time.Sleep(v.sleepInterval)
 		}
 		offset += len(ts)
 	}
@@ -157,6 +190,17 @@ func (v *Validator[T]) fullFromBase(ctx context.Context, offset int) (T, error) 
 	defer cancel()
 	var src T
 	err := v.base.WithContext(dbCtx).Order("id").
+		Offset(offset).First(&src).Error
+	return src, err
+}
+
+func (v *Validator[T]) incrFromBase(ctx context.Context, offset int) (T, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	var src T
+	err := v.base.WithContext(dbCtx).
+		Where("utime > ?", v.utime).
+		Order("utime").
 		Offset(offset).First(&src).Error
 	return src, err
 }

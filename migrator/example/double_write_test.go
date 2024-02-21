@@ -34,7 +34,7 @@ func (s *DoubleWriteTestSuite) SetupSuite() {
 }
 
 func (s *DoubleWriteTestSuite) TearDownTest() {
-	//s.src.Exec("TRUNCATE TABLE users")
+	s.src.Exec("TRUNCATE TABLE users")
 	s.dst.Exec("TRUNCATE TABLE users")
 }
 

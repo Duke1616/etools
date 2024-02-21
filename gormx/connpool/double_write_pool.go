@@ -45,7 +45,7 @@ func (d *DoubleWritePool) BeginTx(ctx context.Context, opts *sql.TxOptions) (gor
 		return &DoubleWriteTx{src: src, dst: dst, l: d.l, pattern: pattern}, nil
 	case PatternDstOnly:
 		dst, err := d.dst.(gorm.TxBeginner).BeginTx(ctx, opts)
-		return &DoubleWriteTx{dst: dst}, err
+		return &DoubleWriteTx{dst: dst, l: d.l, pattern: pattern}, err
 	case PatternDstFirst:
 		dst, err := d.dst.(gorm.TxBeginner).BeginTx(ctx, opts)
 		if err != nil {

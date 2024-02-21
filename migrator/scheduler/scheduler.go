@@ -9,10 +9,12 @@ import (
 	"github.com/Duke1616/etools/logger"
 	"github.com/Duke1616/etools/migrator"
 	"github.com/Duke1616/etools/migrator/events"
+	"github.com/Duke1616/etools/migrator/example"
 	"github.com/Duke1616/etools/migrator/validator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"sync"
+	"time"
 )
 
 type Scheduler[T migrator.Entity] struct {
@@ -27,6 +29,8 @@ type Scheduler[T migrator.Entity] struct {
 
 	pattern  string
 	producer events.Producer
+
+	userDao example.UserDAO
 }
 
 func NewScheduler[T migrator.Entity](l logger.Logger, src *gorm.DB, dst *gorm.DB, pool *connpool.DoubleWritePool,
@@ -47,13 +51,16 @@ func NewScheduler[T migrator.Entity](l logger.Logger, src *gorm.DB, dst *gorm.DB
 	}
 }
 
-func (s *Scheduler[T]) RegisterRoutes(server *gin.RouterGroup) {
-	server.POST("/src_only", ginx.Wrap(s.SrcOnly))
-	server.POST("/src_first", ginx.Wrap(s.SrcFirst))
-	server.POST("/dst_first", ginx.Wrap(s.DstFirst))
-	server.POST("/dst_only", ginx.Wrap(s.DstOnly))
-	server.POST("/full/start", ginx.Wrap(s.StartFullValidation))
-	server.POST("/full/stop", ginx.Wrap(s.StopFullValidation))
+func (s *Scheduler[T]) RegisterRoutes(server *gin.Engine) {
+	ug := server.Group("/migrator")
+	ug.POST("/src_only", ginx.Wrap(s.SrcOnly))
+	ug.POST("/src_first", ginx.Wrap(s.SrcFirst))
+	ug.POST("/dst_first", ginx.Wrap(s.DstFirst))
+	ug.POST("/dst_only", ginx.Wrap(s.DstOnly))
+	ug.POST("/full/start", ginx.Wrap(s.StartFullValidation))
+	ug.POST("/full/stop", ginx.Wrap(s.StopFullValidation))
+	ug.POST("/incr/start", ginx.WrapBody[StartIncrRequest](s.StartIncrementValidation))
+	ug.POST("/incr/stop", ginx.Wrap(s.StopIncrementValidation))
 }
 
 func (s *Scheduler[T]) SrcOnly(c *gin.Context) (httpx.Result, error) {
@@ -96,15 +103,6 @@ func (s *Scheduler[T]) DstOnly(c *gin.Context) (httpx.Result, error) {
 	}, nil
 }
 
-func (s *Scheduler[T]) StopFullValidation(c *gin.Context) (httpx.Result, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.cancelFull()
-	return httpx.Result{
-		Msg: "停止全量校验成功",
-	}, nil
-}
-
 func (s *Scheduler[T]) StartFullValidation(c *gin.Context) (httpx.Result, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -131,6 +129,53 @@ func (s *Scheduler[T]) StartFullValidation(c *gin.Context) (httpx.Result, error)
 	}, nil
 }
 
+func (s *Scheduler[T]) StopFullValidation(c *gin.Context) (httpx.Result, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.cancelFull()
+	return httpx.Result{
+		Msg: "停止全量校验成功",
+	}, nil
+}
+
+func (s *Scheduler[T]) StartIncrementValidation(c *gin.Context, req StartIncrRequest) (httpx.Result, error) {
+	// 开启增量校验
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	cancel := s.cancelIncr
+	v, err := s.newValidator()
+	if err != nil {
+		return httpx.Result{
+			Msg: "系统异常",
+		}, nil
+	}
+	v.Incr().Utime(req.Utime).
+		SleepInterval(time.Duration(req.Interval) * time.Millisecond)
+
+	var ctx context.Context
+	ctx, s.cancelIncr = context.WithCancel(context.Background())
+	go func() {
+		cancel()
+		err = v.Validate(ctx)
+		if err != nil {
+			s.l.Warn("退出增量校验", logger.Error(err))
+		}
+	}()
+	return httpx.Result{
+		Msg: "启动增量校验成功",
+	}, nil
+}
+
+func (s *Scheduler[T]) StopIncrementValidation(c *gin.Context) (httpx.Result, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.cancelIncr()
+	return httpx.Result{
+		Msg: "停止全量校验成功",
+	}, nil
+}
+
 func (s *Scheduler[T]) newValidator() (*validator.Validator[T], error) {
 	switch s.pattern {
 	case connpool.PatternDstOnly, connpool.PatternSrcOnly:
@@ -140,4 +185,11 @@ func (s *Scheduler[T]) newValidator() (*validator.Validator[T], error) {
 	default:
 		return nil, fmt.Errorf("未知的 pattern %s", s.pattern)
 	}
+}
+
+type StartIncrRequest struct {
+	Utime int64 `json:"utime"`
+	// 毫秒数
+	// json 不能正确处理 time.Duration 类型
+	Interval int64 `json:"interval"`
 }
