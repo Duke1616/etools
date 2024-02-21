@@ -7,6 +7,7 @@
 package startup
 
 import (
+	"github.com/Duke1616/etools/migrator/example"
 	"github.com/google/wire"
 )
 
@@ -22,7 +23,10 @@ func InitApp() *App {
 	doubleWritePool := InitDoubleWritePool(srcDB, dstDB, logger)
 	syncProducer := InitSaramaSyncProducer(client)
 	producer := InitFixerProducer(syncProducer)
-	server := InitGinServer(logger, srcDB, dstDB, doubleWritePool, producer)
+	db := InitPoolDB(doubleWritePool)
+	userDAO := example.NewGORMUserDAO(db)
+	userHandler := example.NewUserHandler(userDAO)
+	server := InitGinServer(logger, srcDB, dstDB, doubleWritePool, producer, userHandler)
 	app := &App{
 		Consumers:   v,
 		AdminServer: server,
@@ -41,3 +45,5 @@ var thirdPartySet = wire.NewSet(
 	InitSaramaClient,
 	InitSaramaSyncProducer,
 )
+
+var UsersSet = wire.NewSet(example.NewGORMUserDAO, example.NewUserHandler)
