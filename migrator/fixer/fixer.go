@@ -15,6 +15,15 @@ type OverrideFixer[T migrator.Entity] struct {
 	columns []string
 }
 
+func NewOverrideFixer[T migrator.Entity](base *gorm.DB, target *gorm.DB) (*OverrideFixer[T], error) {
+	rows, err := base.Model(new(T)).Order("id").Rows()
+	if err != nil {
+		return nil, err
+	}
+	columns, err := rows.Columns()
+	return &OverrideFixer[T]{base: base, target: target, columns: columns}, err
+}
+
 func (o OverrideFixer[T]) Fix(ctx context.Context, evt events.InconsistentEvent) error {
 	switch evt.Type {
 	case events.InconsistentEventTypeNEQ, events.InconsistentEventTypeTargetMissing:

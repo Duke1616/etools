@@ -20,6 +20,18 @@ type Consumer[T migrator.Entity] struct {
 	topic    string
 }
 
+func NewConsumer[T migrator.Entity](client sarama.Client, l logger.Logger, src *fixer.OverrideFixer[T],
+	dst *fixer.OverrideFixer[T], topic string) (*Consumer[T], error) {
+
+	return &Consumer[T]{
+		client:   client,
+		l:        l,
+		srcFirst: src,
+		dstFirst: dst,
+		topic:    topic,
+	}, nil
+
+}
 func (c *Consumer[T]) Start() error {
 	eg, err := sarama.NewConsumerGroupFromClient("migrator-fix", c.client)
 	if err != nil {
