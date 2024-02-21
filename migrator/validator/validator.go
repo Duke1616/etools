@@ -49,7 +49,7 @@ func (v *Validator[T]) Validate(ctx context.Context) error {
 }
 
 func (v *Validator[T]) validateBaseToTarget(ctx context.Context) error {
-	offset := 1
+	offset := 0
 	for {
 		src, err := v.fullFromBase(ctx, offset)
 		if err == context.DeadlineExceeded || err == context.Canceled {

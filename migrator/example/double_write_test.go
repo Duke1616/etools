@@ -19,7 +19,7 @@ type DoubleWriteTestSuite struct {
 
 func (s *DoubleWriteTestSuite) SetupSuite() {
 	t := s.T()
-	src, err := gorm.Open(mysql.Open("root:123456@tcp(localhost:3306)/demo"))
+	src, err := gorm.Open(mysql.Open("root:123456@tcp(localhost:3306)/demo_src"))
 	require.NoError(t, err)
 	err = src.AutoMigrate(&User{})
 	require.NoError(t, err)
@@ -34,7 +34,7 @@ func (s *DoubleWriteTestSuite) SetupSuite() {
 }
 
 func (s *DoubleWriteTestSuite) TearDownTest() {
-	s.src.Exec("TRUNCATE TABLE users")
+	//s.src.Exec("TRUNCATE TABLE users")
 	s.dst.Exec("TRUNCATE TABLE users")
 }
 

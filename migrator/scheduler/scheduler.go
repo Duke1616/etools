@@ -134,9 +134,9 @@ func (s *Scheduler[T]) StartFullValidation(c *gin.Context) (httpx.Result, error)
 func (s *Scheduler[T]) newValidator() (*validator.Validator[T], error) {
 	switch s.pattern {
 	case connpool.PatternDstOnly, connpool.PatternSrcOnly:
-		return validator.NewValidator[T](s.src, s.dst, s.pattern, s.l, s.producer), nil
+		return validator.NewValidator[T](s.src, s.dst, "SRC", s.l, s.producer), nil
 	case connpool.PatternSrcFirst, connpool.PatternDstFirst:
-		return validator.NewValidator[T](s.dst, s.src, s.pattern, s.l, s.producer), nil
+		return validator.NewValidator[T](s.dst, s.src, "DST", s.l, s.producer), nil
 	default:
 		return nil, fmt.Errorf("未知的 pattern %s", s.pattern)
 	}

@@ -3,7 +3,7 @@ package example
 import (
 	"encoding/json"
 	"github.com/Duke1616/etools/kafka/saramax"
-	"github.com/Duke1616/etools/kafka/saramax/event"
+	"github.com/Duke1616/etools/kafka/saramax/events"
 	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,7 +18,7 @@ func TestHandler(t *testing.T) {
 
 	// 消费者
 	incr := saramax.NewIncr(client, EvtTopic)
-	consumer := event.InitConsumers(incr)
+	consumer := events.InitConsumers(incr)
 
 	for _, c := range consumer {
 		er := c.Start()

@@ -1,4 +1,4 @@
-package event
+package events
 
 import (
 	"github.com/Duke1616/etools/kafka/saramax"

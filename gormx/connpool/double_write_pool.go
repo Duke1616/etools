@@ -18,6 +18,14 @@ type DoubleWritePool struct {
 	l       logger.Logger
 }
 
+func NewDoubleWritePool(src *gorm.DB, dst *gorm.DB, l logger.Logger) *DoubleWritePool {
+	return &DoubleWritePool{
+		src: src.ConnPool,
+		dst: dst.ConnPool, l: l,
+		pattern: atomicx.NewValueOf(PatternSrcOnly),
+	}
+}
+
 func (d *DoubleWritePool) BeginTx(ctx context.Context, opts *sql.TxOptions) (gorm.ConnPool, error) {
 	pattern := d.pattern.Load()
 	switch pattern {
