@@ -47,6 +47,7 @@ func (s *DoubleWriteTestSuite) TestDoubleWriteTest() {
 	}
 	err := s.dao.Insert(context.Background(), user)
 	assert.NoError(t, err)
+
 	// 数据校验比对
 	srcFirst := &User{}
 	s.src.Where("id = ?", 1).First(&srcFirst)
